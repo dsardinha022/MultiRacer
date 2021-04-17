@@ -3,14 +3,24 @@ import { NgModule } from '@angular/core';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { MatCardModule } from '@angular/material/card';
+import { MatRadioModule } from '@angular/material/radio';
+import { ProblemGenComponent } from './problem-gen/problem-gen.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { GameEngineComponent } from './game-engine/game-engine.component';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    ProblemGenComponent,
+    GameEngineComponent
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule
+    MatCardModule,
+    MatRadioModule,
+    AppRoutingModule,
+    BrowserAnimationsModule
   ],
   providers: [],
   bootstrap: [AppComponent]
