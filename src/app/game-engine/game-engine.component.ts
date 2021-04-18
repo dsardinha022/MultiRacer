@@ -24,9 +24,10 @@ export class MouseCoordinates {
 export class GameEngineComponent implements OnInit {
   quizProblems: ProblemGenComponent;
   problemCubes = new Group();
-  scene = new Scene();
+  collisions = [];
+   scene = new Scene();
   cameraOne = new PerspectiveCamera();
-  followCamera = new PerspectiveCamera();
+  //followCamera = new PerspectiveCamera();
   orbitControls: OrbitControls;
   car: Object3D;
   carSpeed: number = 0;
@@ -108,16 +109,16 @@ export class GameEngineComponent implements OnInit {
 
   configureCameras() {
     //Debugging
-    // this.cameraOne = new PerspectiveCamera(75, 2, 1, 100);
-    // this.cameraOne.near = 2;
-    // this.cameraOne.far = 100000;
-    // this.cameraOne.position.z = 125;
-    // this.cameraOne.lookAt(this.scene.position);
+    this.cameraOne = new PerspectiveCamera(75, 2, 1, 100);
+    this.cameraOne.near = 2;
+    this.cameraOne.far = 100000;
+    this.cameraOne.position.z = 125;
+    this.cameraOne.lookAt(this.scene.position);
 
-    this.followCamera = new PerspectiveCamera(75, 2, 1, 100);
-    this.followCamera.near = 2;
-    this.followCamera.far = 100000;   
-    this.followCamera.lookAt(this.scene.position);
+    // this.followCamera = new PerspectiveCamera(75, 2, 1, 100);
+    // this.followCamera.near = 2;
+    // this.followCamera.far = 100000;   
+    // this.followCamera.lookAt(this.scene.position);
 
   }
   configureLights() {
@@ -141,6 +142,13 @@ export class GameEngineComponent implements OnInit {
         this.spotLight.target = this.car;
         this.scene.add(this.car);
 
+        //Collision Bounding Box
+        for(let child of this.car.children){
+          if(child.geometry){
+            child.geometry.computeBoundingBox();            
+         }
+        }
+        
       }, (xhr) => {
         this.loadingValue = xhr.loaded / xhr.total * 100;
         if(xhr = 100){
@@ -151,7 +159,7 @@ export class GameEngineComponent implements OnInit {
       });
     });    
 
-    this.followCamera.lookAt(this.scene.position);
+    this.cameraOne.lookAt(this.scene.position);
   }
 
 
@@ -168,12 +176,12 @@ export class GameEngineComponent implements OnInit {
     this.addEventListeners();
 
     //Adds follow Cam offset & position
-    this.followCamera.position.set(0,0,0);
-    this.updateCamera();
+    //this.cameraOne.position.set(0,0,0);
+    //this.updateCamera();
 
     // //Adds Orbit Controls - IF REMOVED; game will crash
-    this.orbitControls = new OrbitControls( this.followCamera, this.renderer.domElement );
-
+    this.orbitControls = new OrbitControls( this.cameraOne, this.renderer.domElement );
+    this.orbitControls.update();
 
 
     if(load_model != null){
@@ -197,7 +205,10 @@ export class GameEngineComponent implements OnInit {
       let material = new MeshBasicMaterial( { map: dynamicTexture.texture} );
       let cube = new Mesh( geometry, material );      
       this.positionCube(cube);      
+      this.calculateCollisionPoints(cube, cube.scale);
+      
       this.problemCubes.add(cube);
+      
     }
     this.scene.add( this.problemCubes );
   }
@@ -208,7 +219,7 @@ export class GameEngineComponent implements OnInit {
     if(this.car){
       cube.position.set(randomXPos + this.car.position.x + 200, 75, randomZPos);
     }else{
-      cube.position.set(randomXPos + 200, 75, randomZPos + 200);
+      cube.position.set(randomXPos - 500, 75, randomZPos - 500);
     }
    
   }
@@ -218,8 +229,8 @@ export class GameEngineComponent implements OnInit {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
     this.renderer.setSize(width, height, false); 
-    this.followCamera.aspect = width / height;
-    this.followCamera.updateProjectionMatrix(); 
+    this.cameraOne.aspect = width / height;
+    this.cameraOne.updateProjectionMatrix(); 
     this.isResized = false;
   }
 
@@ -232,11 +243,11 @@ export class GameEngineComponent implements OnInit {
        this.isReverse = true;
       }        
       if(a.key == "a"){
-        this.orbitControls.enabled = false;
+        //this.orbitControls.enabled = false;
         this.isGoingLeft = true;        
       }        
       if(a.key == "d"){
-        this.orbitControls.enabled = false;
+        //this.orbitControls.enabled = false;
         this.isGoingRight = true;
       }              
     }),
@@ -259,16 +270,37 @@ export class GameEngineComponent implements OnInit {
     })
   }
 
+  calculateCollisionPoints( mesh: Mesh, scale, type = 'collision' ) { 
+    // Compute the bounding box after scale, translation, etc.
+    var bbox = new Box3().setFromObject(mesh);
+
+    var bounds = {
+      type: type,
+      xMin: bbox.min.x,
+      xMax: bbox.max.x,
+      yMin: bbox.min.y,
+      yMax: bbox.max.y,
+      zMin: bbox.min.z,
+      zMax: bbox.max.z,
+    };
+   
+    this.collisions.push( bounds );
+  }
+
   protected animate() {    
     requestAnimationFrame(this.animateCallback.callAnimate); 
-    this.updateCamera();
+    //this.updateCamera();
     this.renderAnimation();       
   }
 
-  protected renderAnimation(){    
+  protected renderAnimation(){  
+    this.orbitControls.update();  
     if(this.car != undefined){      
       if(this.isResized){
         this.resizeCanvasToDisplaySize();
+      }
+      if ( this.collisions.length > 0 ) {
+        this.detectCollisions();
       }       
       if(this.isForward || this.isReverse){
         this.carMovement();
@@ -277,7 +309,8 @@ export class GameEngineComponent implements OnInit {
       }
       this.updateProblemCubes();  
     }
-    this.renderer.render(this.scene, this.followCamera);
+    //this.car = undefined;
+    this.renderer.render(this.scene, this.cameraOne);
   }
 
   protected carMovement(): void {
@@ -326,8 +359,8 @@ export class GameEngineComponent implements OnInit {
       const y1 = this.car.position.y + 100;
       const z1 = this.car.position.z;
       var offset = new Vector3(x1, y1, z1);
-      this.followCamera.position.lerp(offset, 0.2);
-      this.followCamera.lookAt(x1, y1, z1);
+      //this.followCamera.position.lerp(offset, 0.2);
+      //this.followCamera.lookAt(x1, y1, z1);
     }
   }
 
@@ -337,6 +370,56 @@ export class GameEngineComponent implements OnInit {
         cube.rotation.x += 0.01;
         cube.rotation.y += 0.01;
       });
+    }
+  }
+
+  protected detectCollisions(){
+  console.log("detectCollisionSystem Running");
+  for ( var index = 0; index < this.collisions.length; index ++ ) {
+    var bbox = new Box3().setFromObject(this.car);
+
+    var bounds = {
+      xMin: bbox.min.x,
+      xMax: bbox.max.x,
+      yMin: bbox.min.y,
+      yMax: bbox.max.y,
+      zMin: bbox.min.z,
+      zMax: bbox.max.z,
+    };
+ 
+    if (this.collisions[ index ].type == 'collision' ) {
+      if ( (bounds.xMin <= this.collisions[ index ].xMax && bounds.xMax >= this.collisions[ index ].xMin ) &&
+         ( bounds.yMin <= this.collisions[ index ].yMax && bounds.yMax >= this.collisions[ index ].yMin) &&
+         ( bounds.zMin <=+ this.collisions[ index ].zMax && bounds.zMax >= this.collisions[ index ].zMin) ) {
+        // We hit a solid object! Stop all movements.
+          console.log("HIT CAPTIAN!");
+
+        this.problemCubes = new Group();
+ 
+        // // Move the object in the clear. Detect the best direction to move.
+        // if ( bounds.xMin <= this.collisions[ index ].xMax && bounds.xMax >= this.collisions[ index ].xMin ) {
+        //   // Determine center then push out accordingly.
+        //   var objectCenterX = ((this.collisions[ index ].xMax - this.collisions[ index ].xMin) / 2) + this.collisions[ index ].xMin;
+        //   var playerCenterX = ((bounds.xMax - bounds.xMin) / 2) + bounds.xMin;
+        //   var objectCenterZ = ((this.collisions[ index ].zMax - this.collisions[ index ].zMin) / 2) + this.collisions[ index ].zMin;
+        //   var playerCenterZ = ((bounds.zMax - bounds.zMin) / 2) + bounds.zMin;
+ 
+        //   // Determine the X axis push.
+        //   if (objectCenterX > playerCenterX) {
+        //     rotationPoint.position.x -= 1;
+        //   } else {
+        //     rotationPoint.position.x += 1;
+        //   }
+        // }
+        // if ( bounds.zMin <= this.collisions[ index ].zMax && bounds.zMax >= this.collisions[ index ].zMin ) {
+        //   // Determine the Z axis push.
+        //   if (objectCenterZ > playerCenterZ) {
+        //   rotationPoint.position.z -= 1;
+        //   } else {
+        //     rotationPoint.position.z += 1;
+        //   }
+         }
+      }
     }
   }
 
