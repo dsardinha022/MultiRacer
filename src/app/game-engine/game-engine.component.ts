@@ -26,8 +26,8 @@ export class GameEngineComponent implements OnInit {
   problemCubes = new Group();
   collisions = [];
    scene = new Scene();
-  cameraOne = new PerspectiveCamera();
-  //followCamera = new PerspectiveCamera();
+  //cameraOne = new PerspectiveCamera();
+  followCamera = new PerspectiveCamera();
   orbitControls: OrbitControls;
   car: Object3D;
   carSpeed: number = 0;
@@ -109,16 +109,16 @@ export class GameEngineComponent implements OnInit {
 
   configureCameras() {
     //Debugging
-    this.cameraOne = new PerspectiveCamera(75, 2, 1, 100);
-    this.cameraOne.near = 2;
-    this.cameraOne.far = 100000;
-    this.cameraOne.position.z = 125;
-    this.cameraOne.lookAt(this.scene.position);
+    // this.cameraOne = new PerspectiveCamera(75, 2, 1, 100);
+    // this.cameraOne.near = 2;
+    // this.cameraOne.far = 100000;
+    // this.cameraOne.position.z = 125;
+    // this.cameraOne.lookAt(this.scene.position);
 
-    // this.followCamera = new PerspectiveCamera(75, 2, 1, 100);
-    // this.followCamera.near = 2;
-    // this.followCamera.far = 100000;   
-    // this.followCamera.lookAt(this.scene.position);
+    this.followCamera = new PerspectiveCamera(75, 2, 1, 100);
+    this.followCamera.near = 2;
+    this.followCamera.far = 100000;   
+    this.followCamera.lookAt(this.scene.position);
 
   }
   configureLights() {
@@ -159,7 +159,7 @@ export class GameEngineComponent implements OnInit {
       });
     });    
 
-    this.cameraOne.lookAt(this.scene.position);
+    //this.followCamera.lookAt(this.scene.position);
   }
 
 
@@ -180,8 +180,8 @@ export class GameEngineComponent implements OnInit {
     //this.updateCamera();
 
     // //Adds Orbit Controls - IF REMOVED; game will crash
-    this.orbitControls = new OrbitControls( this.cameraOne, this.renderer.domElement );
-    this.orbitControls.update();
+    this.orbitControls = new OrbitControls( this.followCamera, this.renderer.domElement );
+    //this.orbitControls.update();
 
 
     if(load_model != null){
@@ -229,8 +229,8 @@ export class GameEngineComponent implements OnInit {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
     this.renderer.setSize(width, height, false); 
-    this.cameraOne.aspect = width / height;
-    this.cameraOne.updateProjectionMatrix(); 
+    this.followCamera.aspect = width / height;
+    this.followCamera.updateProjectionMatrix(); 
     this.isResized = false;
   }
 
@@ -289,12 +289,12 @@ export class GameEngineComponent implements OnInit {
 
   protected animate() {    
     requestAnimationFrame(this.animateCallback.callAnimate); 
-    //this.updateCamera();
+    this.updateCamera();
     this.renderAnimation();       
   }
 
   protected renderAnimation(){  
-    this.orbitControls.update();  
+    //this.orbitControls.update();  
     if(this.car != undefined){      
       if(this.isResized){
         this.resizeCanvasToDisplaySize();
@@ -310,7 +310,7 @@ export class GameEngineComponent implements OnInit {
       this.updateProblemCubes();  
     }
     //this.car = undefined;
-    this.renderer.render(this.scene, this.cameraOne);
+    this.renderer.render(this.scene, this.followCamera);
   }
 
   protected carMovement(): void {
@@ -359,8 +359,8 @@ export class GameEngineComponent implements OnInit {
       const y1 = this.car.position.y + 100;
       const z1 = this.car.position.z;
       var offset = new Vector3(x1, y1, z1);
-      //this.followCamera.position.lerp(offset, 0.2);
-      //this.followCamera.lookAt(x1, y1, z1);
+      this.followCamera.position.lerp(offset, 0.2);
+      this.followCamera.lookAt(x1, y1, z1);
     }
   }
 
